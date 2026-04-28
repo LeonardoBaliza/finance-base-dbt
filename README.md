@@ -3,6 +3,9 @@
 This repository contains a small dbt project that models Finance Base data in
 Snowflake.
 
+For the reasoning behind the main modeling choices, see
+[EXPLAIN.md](EXPLAIN.md).
+
 ## Architecture
 
 The project uses a medallion layout mapped to Snowflake schemas:
