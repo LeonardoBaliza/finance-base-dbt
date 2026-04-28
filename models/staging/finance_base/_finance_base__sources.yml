@@ -1,0 +1,32 @@
+version: 2
+
+sources:
+  - name: finance_base_raw
+    description: Raw Finance Base tables loaded into Snowflake with a PAYLOAD VARIANT column.
+    database: FINANCE_BASE_DBT
+    schema: RAW
+    tables:
+      - name: raw_funds
+        identifier: FUNDS
+        description: Raw fund master records.
+      - name: raw_quotes
+        identifier: QUOTES
+        description: Raw daily market quotes.
+      - name: raw_fund_distributions
+        identifier: FUND_DISTRIBUTIONS
+        description: Raw distribution events.
+      - name: raw_funds_splits
+        identifier: FUNDS_SPLITS
+        description: Raw split events.
+      - name: raw_fund_ticker_history
+        identifier: FUND_TICKER_HISTORY
+        description: Raw historical ticker aliases.
+      - name: raw_fii_monthly_reports
+        identifier: FII_MONTHLY_REPORTS
+        description: Raw FII monthly report metrics.
+      - name: raw_fiagro_monthly_reports
+        identifier: FIAGRO_MONTHLY_REPORTS
+        description: Raw FIAGRO monthly report metrics.
+      - name: raw_fii_quarterly_reports
+        identifier: FII_QUARTERLY_REPORTS
+        description: Raw FII quarterly report metrics.

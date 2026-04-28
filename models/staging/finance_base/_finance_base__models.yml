@@ -1,0 +1,236 @@
+version: 2
+
+models:
+  - name: stg_finance_base__funds
+    description: One standardized row per raw fund record.
+    columns:
+      - name: cnpj
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_value_lengths_to_equal:
+              arguments:
+                value: 14
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[0-9]{14}$"
+      - name: ticker
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[A-Z0-9]{4,8}$"
+      - name: fund_type
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["FII", "FIAGRO"]
+
+  - name: stg_finance_base__quotes
+    description: Typed daily OHLCV quote records.
+    columns:
+      - name: ticker
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[A-Z0-9]{4,8}$"
+      - name: date
+        tests:
+          - not_null
+      - name: close_price
+        tests:
+          - non_negative
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+      - name: open_price
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "open_price is not null"
+      - name: high_price
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "high_price is not null"
+      - name: low_price
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "low_price is not null"
+      - name: financial_volume
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "financial_volume is not null"
+      - name: trade_count
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "trade_count is not null"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ["ticker", "date"]
+      - dbt_expectations.expect_column_pair_values_A_to_be_greater_than_B:
+          arguments:
+            column_A: high_price
+            column_B: low_price
+            or_equal: true
+            row_condition: "high_price is not null and low_price is not null"
+      - dbt_expectations.expect_column_pair_values_A_to_be_greater_than_B:
+          arguments:
+            column_A: high_price
+            column_B: close_price
+            or_equal: true
+            row_condition: "high_price is not null and close_price is not null"
+      - dbt_expectations.expect_column_pair_values_A_to_be_greater_than_B:
+          arguments:
+            column_A: close_price
+            column_B: low_price
+            or_equal: true
+            row_condition: "close_price is not null and low_price is not null"
+
+  - name: stg_finance_base__fund_distributions
+    description: Typed distribution events.
+    columns:
+      - name: ticker
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[A-Z0-9]{4,8}$"
+      - name: base_date
+        tests:
+          - not_null
+      - name: amount
+        tests:
+          - non_negative
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+      - name: cnpj
+        tests:
+          - dbt_expectations.expect_column_value_lengths_to_equal:
+              arguments:
+                value: 14
+                row_condition: "cnpj is not null"
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[0-9]{14}$"
+                row_condition: "cnpj is not null"
+    tests:
+      - dbt_expectations.expect_column_pair_values_A_to_be_greater_than_B:
+          arguments:
+            column_A: payment_date
+            column_B: base_date
+            or_equal: true
+            row_condition: "payment_date is not null"
+
+  - name: stg_finance_base__funds_splits
+    description: Typed fund split events.
+    columns:
+      - name: cnpj
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_value_lengths_to_equal:
+              arguments:
+                value: 14
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[0-9]{14}$"
+      - name: split_date
+        tests:
+          - not_null
+      - name: split_factor
+        tests:
+          - non_negative
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                strictly: true
+
+  - name: stg_finance_base__fund_ticker_history
+    description: Historical ticker aliases by fund CNPJ.
+    columns:
+      - name: cnpj
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_value_lengths_to_equal:
+              arguments:
+                value: 14
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[0-9]{14}$"
+      - name: ticker
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[A-Z0-9]{4,8}$"
+
+  - name: stg_finance_base__monthly_reports
+    description: Combined FII and FIAGRO monthly report metrics.
+    columns:
+      - name: ticker
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[A-Z0-9]{4,8}$"
+      - name: month_start
+        tests:
+          - not_null
+      - name: cnpj
+        tests:
+          - dbt_expectations.expect_column_value_lengths_to_equal:
+              arguments:
+                value: 14
+                row_condition: "cnpj is not null"
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[0-9]{14}$"
+                row_condition: "cnpj is not null"
+      - name: net_worth
+      - name: shareholder_count
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "shareholder_count is not null"
+      - name: share_count
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "share_count is not null"
+      - name: book_value_per_share
+
+  - name: stg_finance_base__quarterly_reports
+    description: Typed quarterly FII report metrics.
+    columns:
+      - name: ticker
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[A-Z0-9]{4,8}$"
+      - name: quarter_start
+        tests:
+          - not_null
+      - name: cnpj
+        tests:
+          - dbt_expectations.expect_column_value_lengths_to_equal:
+              arguments:
+                value: 14
+                row_condition: "cnpj is not null"
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[0-9]{14}$"
+                row_condition: "cnpj is not null"
+      - name: net_worth
