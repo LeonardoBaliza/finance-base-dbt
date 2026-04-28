@@ -1,0 +1,32 @@
+name: finance_base_dbt
+version: "1.0.0"
+config-version: 2
+
+profile: finance_base_dbt
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+vars:
+  'dbt_date:time_zone': 'America/Sao_Paulo'
+
+models:
+  finance_base_dbt:
+    staging:
+      +schema: BRONZE
+      +materialized: view
+    intermediate:
+      +schema: SILVER
+      +materialized: view
+    marts:
+      +schema: GOLD
+      +materialized: table
