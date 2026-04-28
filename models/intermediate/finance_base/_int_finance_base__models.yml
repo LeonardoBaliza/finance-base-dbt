@@ -1,0 +1,118 @@
+version: 2
+
+models:
+  - name: int_finance_base__current_funds
+    description: Current active fund record by CNPJ.
+    columns:
+      - name: cnpj
+        tests:
+          - not_null
+          - unique
+          - dbt_expectations.expect_column_value_lengths_to_equal:
+              arguments:
+                value: 14
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[0-9]{14}$"
+      - name: ticker
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[A-Z0-9]{4,8}$"
+
+  - name: int_finance_base__distribution_yields
+    description: Distribution events with split adjustment and base-date yield.
+    columns:
+      - name: distribution_key
+        tests:
+          - not_null
+          - unique
+      - name: adjusted_amount
+        tests:
+          - non_negative
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+      - name: distribution_yield
+        tests:
+          - non_negative
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 1
+                row_condition: "distribution_yield is not null"
+      - name: cumulative_split_factor
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                strictly: true
+                row_condition: "cumulative_split_factor is not null"
+      - name: base_close_price
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "base_close_price is not null"
+
+  - name: int_finance_base__monthly_metrics
+    description: Monthly fund metrics enriched with latest available quote in each month.
+    columns:
+      - name: ticker
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[A-Z0-9]{4,8}$"
+      - name: month_start
+        tests:
+          - not_null
+      - name: net_worth
+      - name: shareholder_count
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "shareholder_count is not null"
+      - name: book_value_per_share
+      - name: price_to_book_ratio
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "price_to_book_ratio is not null"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ["cnpj", "month_start"]
+
+  - name: int_finance_base__quarterly_ffo
+    description: Quarterly FFO metrics enriched with quarterly distributions.
+    columns:
+      - name: ticker
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[A-Z0-9]{4,8}$"
+      - name: quarter_start
+        tests:
+          - not_null
+      - name: net_worth
+      - name: distributions_per_share
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "distributions_per_share is not null"
+      - name: distribution_to_ffo_ratio
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "distribution_to_ffo_ratio is not null"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ["cnpj", "quarter_start"]
