@@ -1,0 +1,239 @@
+version: 2
+
+models:
+  - name: dim_funds
+    description: BI-facing fund dimension.
+    columns:
+      - name: ticker
+        description: Current trading ticker.
+        tests:
+          - not_null
+          - unique
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[A-Z0-9]{4,8}$"
+      - name: cnpj
+        description: Brazilian fund registration number, digits only.
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_value_lengths_to_equal:
+              arguments:
+                value: 14
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[0-9]{14}$"
+      - name: fund_type
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["FII", "FIAGRO"]
+
+  - name: fct_daily_quotes
+    description: Daily market quote fact table.
+    columns:
+      - name: quote_key
+        tests:
+          - not_null
+          - unique
+      - name: ticker
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[A-Z0-9]{4,8}$"
+      - name: date
+        tests:
+          - not_null
+      - name: close_price
+        tests:
+          - non_negative
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+      - name: open_price
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "open_price is not null"
+      - name: high_price
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "high_price is not null"
+      - name: low_price
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "low_price is not null"
+      - name: financial_volume
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "financial_volume is not null"
+      - name: trade_count
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "trade_count is not null"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ["ticker", "date"]
+      - dbt_expectations.expect_column_pair_values_A_to_be_greater_than_B:
+          arguments:
+            column_A: high_price
+            column_B: low_price
+            or_equal: true
+            row_condition: "high_price is not null and low_price is not null"
+      - dbt_expectations.expect_column_pair_values_A_to_be_greater_than_B:
+          arguments:
+            column_A: high_price
+            column_B: close_price
+            or_equal: true
+            row_condition: "high_price is not null and close_price is not null"
+      - dbt_expectations.expect_column_pair_values_A_to_be_greater_than_B:
+          arguments:
+            column_A: close_price
+            column_B: low_price
+            or_equal: true
+            row_condition: "close_price is not null and low_price is not null"
+
+  - name: fct_distributions
+    description: Distribution fact table with split-adjusted values.
+    columns:
+      - name: distribution_key
+        tests:
+          - not_null
+          - unique
+      - name: current_ticker
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[A-Z0-9]{4,8}$"
+      - name: adjusted_amount
+        description: "{{ doc('split_adjusted_distribution') }}"
+        tests:
+          - non_negative
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+      - name: distribution_yield
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 1
+                row_condition: "distribution_yield is not null"
+  - name: mart_fund_indicators
+    description: Current fund dashboard indicators.
+    columns:
+      - name: ticker
+        tests:
+          - not_null
+          - unique
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[A-Z0-9]{4,8}$"
+      - name: dividend_yield_12m
+        description: "{{ doc('dividend_yield_12m') }}"
+        tests:
+          - non_negative
+      - name: price_to_book_ratio
+        description: "{{ doc('price_to_book_ratio') }}"
+        tests:
+          - non_negative
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "price_to_book_ratio is not null"
+      - name: latest_close_price
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "latest_close_price is not null"
+      - name: net_worth
+      - name: shareholder_count
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "shareholder_count is not null"
+
+  - name: mart_fund_monthly_history
+    description: Monthly historical BI mart.
+    columns:
+      - name: monthly_history_key
+        tests:
+          - not_null
+          - unique
+      - name: ticker
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[A-Z0-9]{4,8}$"
+      - name: month_start
+        tests:
+          - not_null
+      - name: net_worth
+      - name: shareholder_count
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "shareholder_count is not null"
+      - name: book_value_per_share
+      - name: price_to_book_ratio
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "price_to_book_ratio is not null"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ["cnpj", "month_start"]
+
+  - name: mart_fund_quarterly_history
+    description: Quarterly FFO and payout BI mart.
+    columns:
+      - name: quarterly_history_key
+        tests:
+          - not_null
+          - unique
+      - name: ticker
+        tests:
+          - not_null
+          - dbt_expectations.expect_column_values_to_match_regex:
+              arguments:
+                regex: "^[A-Z0-9]{4,8}$"
+      - name: quarter_start
+        tests:
+          - not_null
+      - name: ffo
+        description: "{{ doc('ffo') }}"
+      - name: net_worth
+      - name: distributions_per_share
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                row_condition: "distributions_per_share is not null"
+      - name: distribution_to_ffo_ratio
+        tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 2
+                row_condition: "distribution_to_ffo_ratio is not null"
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: ["cnpj", "quarter_start"]
